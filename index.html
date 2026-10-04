@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PetroQuick — Vsh, PHI и коллекторы по ГИС</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#E9EEF0; --surface:#FFFFFF; --surface2:#F3F6F7; --ink:#13232D; --muted:#566772; --line:#CBD6DC;
+  --accent:#0B6B6B; --accent-ink:#FFFFFF; --warn:#8A5200; --warnbg:#FFF3D6; --err:#A32121; --errbg:#FCE8E8;
+  --ok:#1E6E38; --okbg:#E3F3E8; --info:#1F4E79; --infobg:#E6EFF8;
+  --res:#2FA35A; --resfill:rgba(47,163,90,.26); --resstrong:rgba(47,163,90,.78);
+  --gr:#1D8A3E; --vsh:#8A5A2B; --phi:#1F5FBF; --nphi:#2A7DB5; --rt:#C2262E; --core:#D08A12; --grid:#DCE4E8; --axis:#8FA2AD;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E181E; --surface:#16242C; --surface2:#1C2E38; --ink:#E6EEF2; --muted:#9DB1BD; --line:#2F4350;
+    --accent:#4FC3C3; --accent-ink:#06282A; --warn:#F2C56B; --warnbg:#3A2E10; --err:#FF8E8E; --errbg:#3C1818;
+    --ok:#7FD79A; --okbg:#12301D; --info:#9CC7EE; --infobg:#142A3E;
+    --res:#46C47A; --resfill:rgba(70,196,122,.24); --resstrong:rgba(70,196,122,.72);
+    --gr:#58C57C; --vsh:#D2A06A; --phi:#6FA3F2; --nphi:#6CB7E6; --rt:#FF7C84; --core:#E8A838; --grid:#2A3C47; --axis:#6D8593;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E181E; --surface:#16242C; --surface2:#1C2E38; --ink:#E6EEF2; --muted:#9DB1BD; --line:#2F4350;
+  --accent:#4FC3C3; --accent-ink:#06282A; --warn:#F2C56B; --warnbg:#3A2E10; --err:#FF8E8E; --errbg:#3C1818;
+  --ok:#7FD79A; --okbg:#12301D; --info:#9CC7EE; --infobg:#142A3E;
+  --res:#46C47A; --resfill:rgba(70,196,122,.24); --resstrong:rgba(70,196,122,.72);
+  --gr:#58C57C; --vsh:#D2A06A; --phi:#6FA3F2; --nphi:#6CB7E6; --rt:#FF7C84; --core:#E8A838; --grid:#2A3C47; --axis:#6D8593;
+}
+*{box-sizing:border-box}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:400 14px/1.45 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-variant-numeric:tabular-nums;-webkit-text-size-adjust:100%}
+h1,h2,h3{margin:0;font-weight:600}
+h2{font-size:15px;margin-bottom:10px}
+h3{font-size:13px;margin:12px 0 6px;color:var(--muted);font-weight:600}
+.top{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.brand h1{font-size:22px;letter-spacing:-.01em}
+.brand span{color:var(--muted)}
+.chip{display:inline-block;padding:3px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-size:12.5px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wrap{max-width:1560px;margin:0 auto;padding:16px 20px 40px;display:flex;flex-direction:column;gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;min-width:0}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;align-items:start}
+.side{display:flex;flex-direction:column;gap:16px;min-width:0}
+@media (max-width:1100px){.layout{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:1000px){.grid3,.grid2{grid-template-columns:minmax(0,1fr)}}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+button,.btn{font:inherit;min-height:38px;padding:7px 14px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:500}
+button.small{min-height:32px;padding:4px 10px;font-size:13px}
+button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.5;cursor:not-allowed}
+label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)}
+input[type=number],input[type=text],select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-height:36px;width:100%}
+input[type=number].bad{border-color:var(--err);background:var(--errbg)}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.sliders{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px 22px;margin-top:12px}
+.sl{display:flex;flex-direction:column;gap:4px}
+.sl .row{display:flex;justify-content:space-between;align-items:baseline;color:var(--ink);font-size:13px}
+.sl output{font-weight:600;font-size:15px}
+input[type=range]{width:100%;accent-color:var(--accent);min-height:28px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:6px 0;font-size:13px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;word-break:break-word}
+.msg{padding:8px 10px;border-radius:6px;font-size:13px;margin:6px 0;border:1px solid transparent}
+.msg.err{background:var(--errbg);color:var(--err);border-color:var(--err)}
+.msg.warn{background:var(--warnbg);color:var(--warn)}
+.msg.info{background:var(--infobg);color:var(--info)}
+.msg.ok{background:var(--okbg);color:var(--ok)}
+ul.qc{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+ul.qc li{padding:7px 10px;border-radius:6px;font-size:13px;border-left:4px solid}
+li.lv-error{background:var(--errbg);border-color:var(--err);color:var(--err)}
+li.lv-warn{background:var(--warnbg);border-color:var(--warn);color:var(--warn)}
+li.lv-info{background:var(--infobg);border-color:var(--info);color:var(--info)}
+li.lv-ok{background:var(--okbg);border-color:var(--ok);color:var(--ok)}
+details{border-top:1px solid var(--line);margin-top:12px;padding-top:8px}
+summary{cursor:pointer;font-weight:600;min-height:32px;display:flex;align-items:center;gap:6px;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"\25B8";color:var(--accent);font-size:13px;width:12px}
+details[open]>summary::before{content:"\25BE"}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.toolbar input[type=range]{flex:1 1 160px;min-width:120px}
+.readout{min-height:44px;padding:6px 10px;margin-bottom:8px;border-radius:6px;background:var(--surface2);border:1px solid var(--line);font-size:13px}
+.plot-host{overflow-x:auto;overflow-y:hidden;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.plot-host svg{display:block}
+.plot-host text{fill:var(--ink);font-family:inherit}
+.empty{padding:40px 20px;text-align:center;color:var(--muted)}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.m{background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.m b{display:block;font-size:22px;font-weight:600;line-height:1.2}
+.m span{color:var(--muted);font-size:12.5px}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 5px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{color:var(--muted);font-weight:500;background:var(--surface2);position:sticky;top:0}
+th:first-child,td:first-child,th:last-child,td:last-child{text-align:center}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--surface2)}
+.dlbar{position:sticky;top:0;z-index:20;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px 20px;background:var(--infobg);color:var(--info);border-bottom:1px solid var(--line);font-size:13px}
+.dlbar[hidden],[hidden]{display:none!important}
+.overlay{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px}
+.dialog{background:var(--surface);border-radius:8px;border:1px solid var(--line);width:min(760px,100%);max-height:90vh;display:flex;flex-direction:column;gap:10px;padding:16px}
+.dialog textarea{flex:1;min-height:260px;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;white-space:pre}
+.tests{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:4px}
+.tests li{font-size:13px;display:flex;gap:8px}
+.tests .ok{color:var(--ok);font-weight:600}
+.tests .no{color:var(--err);font-weight:600}
+.note{color:var(--muted);font-size:12.5px}
+@media (max-width:600px){
+  .wrap{padding:12px 10px 30px}.top{padding:12px 10px}.card{padding:12px}
+  .m b{font-size:19px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><h1>PetroQuick</h1><span>Расчёт Vsh, PHI и коллекторов по ГИС одной скважины</span></div>
+  <div class="chip" id="srcChip">Данные не загружены</div>
+</header>
+<div class="dlbar" id="dlBar" hidden>
+  <span id="dlBarText"></span>
+  <button class="small" id="dlShow">Показать текст</button>
+  <button class="small" id="dlClose" aria-label="Закрыть уведомление">Закрыть</button>
+</div>
+
+<main class="wrap">
+  <section class="grid3">
+    <article class="card" id="cardGis">
+      <h2>ГИС</h2>
+      <div class="btns">
+        <button class="primary" id="btnGis">Импорт ГИС</button>
+        <button id="btnBuiltin">Встроенный пример UZ-1</button>
+      </div>
+      <input type="file" id="fGis" hidden accept=".csv,.tsv,.txt,.las,.xlsx,.xls,.pdf,.jpg,.jpeg,.png">
+      <div id="gisMsg"></div>
+      <div id="gisInfo"></div>
+      <label id="gisSheetWrap" hidden>Лист Excel<select id="gisSheet"></select></label>
+      <div id="gisMap"></div>
+    </article>
+    <article class="card" id="cardCore">
+      <h2>Керн</h2>
+      <div class="btns">
+        <button class="primary" id="btnCore">Импорт керна</button>
+        <button id="btnCoreClear">Убрать керн</button>
+      </div>
+      <input type="file" id="fCore" hidden accept=".csv,.tsv,.txt,.xlsx,.xls,.pdf,.jpg,.jpeg,.png">
+      <div id="coreMsg"></div>
+      <div id="coreInfo"></div>
+      <label id="coreSheetWrap" hidden>Лист Excel<select id="coreSheet"></select></label>
+      <div id="coreMap"></div>
+      <div class="msg info">Автоматическая глубинная увязка керна и ГИС в MVP не выполняется</div>
+    </article>
+    <article class="card" id="cardTest">
+      <h2>Тестовые файлы (скважина UZ-1)</h2>
+      <p class="note" style="margin-top:0">CSV, LAS и Excel содержат одни и те же данные ГИС — это альтернативные форматы, загружать их одновременно не нужно.</p>
+      <div class="btns">
+        <button id="tCsv">Скачать тестовый CSV</button>
+        <button id="tLas">Скачать тестовый LAS</button>
+        <button id="tXlsx">Скачать тестовый Excel</button>
+      </div>
+      <div class="btns">
+        <button id="tCoreCsv">Скачать тестовый керн CSV</button>
+        <button id="tCoreXlsx">Скачать тестовый керн Excel</button>
+      </div>
+      <details>
+        <summary>Файлы с ошибками (для проверки контроля качества)</summary>
+        <div class="btns" style="margin-top:8px">
+          <button id="tBadLog">Скачать CSV с ошибками</button>
+          <button id="tBadCore">Скачать керн с ошибками</button>
+        </div>
+      </details>
+    </article>
+  </section>
+
+  <section class="card" id="cardParams">
+    <h2>Настройки интерпретации</h2>
+    <div class="fields">
+      <label>Кровля интервала, м<input type="number" step="any" id="iTop"></label>
+      <label>Подошва интервала, м<input type="number" step="any" id="iBase"></label>
+      <label>Мин. мощность интервала, м<input type="number" step="any" min="0" id="iMin" value="0"></label>
+    </div>
+    <div id="intervalMsg"></div>
+    <div class="sliders">
+      <div class="sl">
+        <div class="row"><label for="sV" style="flex-direction:row;gap:6px;color:var(--ink)">Максимальная отсечка Vsh</label><output id="sVv">0.35</output></div>
+        <input type="range" id="sV" min="0" max="1" step="0.01" value="0.35">
+      </div>
+      <div class="sl">
+        <div class="row"><label for="sP" style="flex-direction:row;gap:6px;color:var(--ink)">Минимальная отсечка PHI</label><output id="sPv">0.100</output></div>
+        <input type="range" id="sP" min="0" max="0.30" step="0.005" value="0.1">
+      </div>
+    </div>
+    <p class="note" style="margin-bottom:0">Коллектор: Vsh ≤ отсечки Vsh и одновременно PHI ≥ отсечки PHI.</p>
+    <details id="methodDet">
+      <summary>Методика расчёта</summary>
+      <div class="msg warn">Используется упрощённая демонстрационная методика. Для реальной интерпретации формулы и параметры должен утвердить петрофизик.</div>
+      <p class="note">IGR = (GR − GR_clean) / (GR_shale − GR_clean)<br>
+        Vsh (линейный) = IGR, ограниченный диапазоном 0…1<br>
+        PHI = (RHO_matrix − RHOB) / (RHO_matrix − RHO_fluid), ограниченная диапазоном 0…0,30</p>
+      <div class="fields">
+        <label>GR_clean, API<input type="number" step="any" id="pGrClean" value="26.2"></label>
+        <label>GR_shale, API<input type="number" step="any" id="pGrShale" value="86.9"></label>
+        <label>RHO_matrix, г/см³<input type="number" step="any" id="pRhoMa" value="2.65"></label>
+        <label>RHO_fluid, г/см³<input type="number" step="any" id="pRhoFl" value="1.00"></label>
+        <label>Метод Vsh
+          <select id="pMethod">
+            <option value="lin">Линейный (по умолчанию)</option>
+            <option value="larT">Нелинейный, третичные породы (справочно)</option>
+            <option value="larO">Нелинейный, древние породы (справочно)</option>
+          </select>
+        </label>
+      </div>
+      <p class="note" id="methodNote"></p>
+      <div id="paramMsg"></div>
+    </details>
+  </section>
+
+  <section class="layout">
+    <article class="card">
+      <h2>Планшет</h2>
+      <div class="toolbar">
+        <button class="small" id="zIn" aria-label="Приблизить">Приблизить +</button>
+        <button class="small" id="zOut" aria-label="Отдалить">Отдалить −</button>
+        <button class="small" id="zAll">Вся скважина</button>
+        <label style="flex:1 1 160px;min-width:140px;flex-direction:row;align-items:center;gap:8px">Положение<input type="range" id="zPos" min="0" max="1000" value="0" style="flex:1"></label>
+      </div>
+      <div class="readout" id="readout">Наведите курсор или коснитесь планшета: появятся глубина, значения кривых и сведения о керне. Масштаб колесом мыши — с зажатым Ctrl.</div>
+      <div class="plot-host" id="plotHost"></div>
+    </article>
+    <aside class="side">
+      <article class="card">
+        <h2>Итоговые показатели</h2>
+        <div class="metrics" id="metrics"></div>
+      </article>
+      <article class="card">
+        <h2>Интервалы коллекторов</h2>
+        <div class="tw" id="tableHost"></div>
+        <p class="note" style="margin-bottom:0">Нажмите строку, чтобы приблизить интервал на планшете.</p>
+      </article>
+      <article class="card">
+        <h2>Экспорт</h2>
+        <div class="fields">
+          <label>Разделитель
+            <select id="xDelim"><option value=";">; (точка с запятой)</option><option value=",">, (запятая)</option><option value="&#9;">Табуляция</option></select>
+          </label>
+          <label>Десятичный знак
+            <select id="xDec"><option value=".">. (точка)</option><option value=",">, (запятая)</option></select>
+          </label>
+        </div>
+        <div class="btns" style="margin-top:10px;margin-bottom:0"><button class="primary" id="btnExport">Экспорт результата CSV</button></div>
+        <p class="note" style="margin-bottom:0">Выгружается рассматриваемый интервал с текущими параметрами и отсечками. Кодировка UTF-8 с BOM.</p>
+      </article>
+    </aside>
+  </section>
+
+  <section class="grid2">
+    <article class="card"><h2>Контроль качества ГИС</h2><div id="qcLog"></div></article>
+    <article class="card"><h2>Контроль качества керна</h2><div id="qcCore"></div></article>
+  </section>
+
+  <section class="card">
+    <h2>Диагностика</h2>
+    <p class="note" style="margin-top:0">«Самотест» в памяти создаёт тестовые CSV, LAS и Excel, читает их теми же функциями импорта, сравнивает с встроенным набором, проверяет контроль качества и экспорт.</p>
+    <div class="btns"><button id="btnSelf">Запустить самотест</button></div>
+    <ul class="tests" id="selfOut"></ul>
+  </section>
+</main>
+
+<div class="overlay" id="dlg" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlgTitle">
+    <h2 id="dlgTitle" style="margin:0">Текст файла</h2>
+    <textarea id="dlgText" readonly></textarea>
+    <div class="btns" style="margin:0">
+      <button class="primary" id="dlgCopy">Копировать</button>
+      <button id="dlgClose">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============================== УТИЛИТЫ ============================== */
+const $ = id => document.getElementById(id);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = (x, d = 2) => Number.isFinite(x) ? x.toFixed(d) : '—';
+const EPS = 1e-9;
+const NULLV = -999.25;
+
+function isBlank(v){ return v === null || v === undefined || String(v).trim() === ''; }
+function toNum(v){
+  if (typeof v === 'number') return Number.isFinite(v) ? v : NaN;
+  if (v === null || v === undefined) return NaN;
+  let s = String(v).trim().replace(/\u00A0/g, '');
+  if (s === '') return NaN;
+  if (/^[-+]?\d+,\d+$/.test(s)) s = s.replace(',', '.');
+  if (!/^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/.test(s)) return NaN;
+  const x = Number(s);
+  return Number.isFinite(x) ? x : NaN;
+}
+function median(a){
+  if (!a.length) return NaN;
+  const b = a.slice().sort((x, y) => x - y), m = b.length >> 1;
+  return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2;
+}
+function lowerBound(arr, x){ let lo = 0, hi = arr.length; while (lo < hi){ const m = (lo + hi) >> 1; if (arr[m] < x) lo = m + 1; else hi = m; } return lo; }
+function upperBound(arr, x){ let lo = 0, hi = arr.length; while (lo < hi){ const m = (lo + hi) >> 1; if (arr[m] <= x) lo = m + 1; else hi = m; } return lo; }
+function normName(s){
+  return String(s).toUpperCase().replace(/\(.*?\)/g, '').replace(/\[.*?\]/g, '').split(',')[0].replace(/\s+/g, '').trim();
+}
+
+/* ============================== СОСТОЯНИЕ ============================== */
+const state = {
+  gis: null,      // {name, format, src, table, nullVal, map, sheetNames, sheet, warnsLoad}
+  log: null,      // обработанный каротаж
+  logWarns: [],
+  core: null,     // {name, format, src, table, map, sheetNames, sheet}
+  cores: [],      // обработанные керновые интервалы
+  coreWarns: [],
+  p: { grClean: 26.2, grShale: 86.9, rhoMa: 2.65, rhoFl: 1.0, method: 'lin' },
+  vcut: 0.35, pcut: 0.10, minThick: 0,
+  iTop: NaN, iBase: NaN,
+  view: [0, 1],
+  res: null,
+  blockMsg: 'Загрузите данные ГИС или откройте встроенный пример.',
+  paramErr: [], intervalErr: [],
+  dl: null
+};
+
+/* ============================== ПАРСЕРЫ ============================== */
+const ALIASES = {
+  DEPTH: ['DEPTH','DEPT','MD','TVD','ГЛУБИНА'],
+  GR:    ['GR','GAMMA','GK','ГК','GRC','GAPI'],
+  RHOB:  ['RHOB','RHOZ','DEN','DENS','DENSITY','RHOBC','ПЛОТНОСТЬ'],
+  NPHI:  ['NPHI','NPHI_LS','NEU','TNPH','CNL','NPOR'],
+  RT:    ['RT','ILD','LLD','RES','RESISTIVITY','AT90','RDEEP']
+};
+const CORE_ALIASES = {
+  TOP:      ['TOP','ВЕРХ','КРОВЛЯ','FROM','DEPTH_TOP','TOP_M'],
+  BASE:     ['BASE','BOTTOM','BOT','НИЗ','ПОДОШВА','TO','DEPTH_BASE','BASE_M'],
+  CORE_PHI: ['CORE_PHI','COREPHI','PHI','POR','POROSITY','KP','КП','ПОРИСТОСТЬ'],
+  PERM:     ['PERM','K','KPR','KAIR','ПРОНИЦАЕМОСТЬ'],
+  LITHOLOGY:['LITHOLOGY','LITH','ЛИТОЛОГИЯ'],
+  RECOVERY: ['RECOVERY','REC','ВЫНОС']
+};
+function detectColumns(cols, aliases){
+  const names = cols.map(normName), used = new Set(), map = {};
+  for (const key of Object.keys(aliases)){
+    let found = -1;
+    for (const al of aliases[key]){
+      const i = names.findIndex((n, k) => n === al && !used.has(k));
+      if (i >= 0){ found = i; break; }
+    }
+    if (found < 0){
+      for (const al of aliases[key]){
+        if (al.length < 3) continue;
+        const i = names.findIndex((n, k) => !used.has(k) && (n.startsWith(al + '_') || n.startsWith(al + '.')));
+        if (i >= 0){ found = i; break; }
+      }
+    }
+    map[key] = found;
+    if (found >= 0) used.add(found);
+  }
+  return map;
+}
+
+function decodeText(buf){
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+  catch (e){ try { return new TextDecoder('windows-1251').decode(buf); } catch (e2){ return new TextDecoder('utf-8').decode(buf); } }
+}
+function detectDelim(text){
+  const lines = text.split(/\r?\n/).filter(l => l.trim()).slice(0, 12);
+  let best = ',', bestScore = -1;
+  for (const d of [';', '\t', ',']){
+    const counts = lines.map(l => l.split(d).length - 1);
+    const freq = {}; counts.forEach(c => { if (c > 0) freq[c] = (freq[c] || 0) + 1; });
+    const score = Math.max(0, ...Object.values(freq));
+    if (score > bestScore){ bestScore = score; best = d; }
+  }
+  return best;
+}
+function splitDelimited(text, delim){
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (q){
+      if (c === '"'){ if (text[i + 1] === '"'){ cur += '"'; i++; } else q = false; }
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === delim){ row.push(cur); cur = ''; }
+    else if (c === '\n'){ row.push(cur); rows.push(row); row = []; cur = ''; }
+    else if (c === '\r'){ /* skip */ }
+    else cur += c;
+  }
+  if (cur !== '' || row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+function tableFromAoa(aoa){
+  const rows = aoa.filter(r => r && r.some(c => !isBlank(c)));
+  if (!rows.length) return { error: 'Файл пустой: нет ни одной непустой строки.' };
+  let h = -1;
+  for (let i = 0; i < Math.min(rows.length, 30); i++){
+    const nonnum = rows[i].filter(c => !isBlank(c) && !Number.isFinite(toNum(c))).length;
+    if (nonnum >= 2){ h = i; break; }
+  }
+  if (h < 0) return { error: 'Не найдена строка заголовков: в файле нет строки с названиями колонок.' };
+  let cols = rows[h].map(c => isBlank(c) ? '' : String(c).trim());
+  while (cols.length && cols[cols.length - 1] === '') cols.pop();
+  cols = cols.map((c, i) => c || ('Колонка ' + (i + 1)));
+  const W = cols.length;
+  let start = h + 1, units = null;
+  const nx = rows[start];
+  if (nx){
+    const cells = nx.slice(0, W).filter(c => !isBlank(c));
+    if (cells.length && cells.every(c => !Number.isFinite(toNum(c)))){
+      units = nx.slice(0, W).map(c => isBlank(c) ? '' : String(c).trim());
+      start++;
+    }
+  }
+  const data = rows.slice(start).map(r => { const o = r.slice(0, W); while (o.length < W) o.push(null); return o; });
+  return { table: { cols, units, rows: data } };
+}
+function parseCsvText(text){
+  text = text.replace(/^\uFEFF/, '');
+  const delim = detectDelim(text);
+  const aoa = splitDelimited(text, delim);
+  const r = tableFromAoa(aoa);
+  if (r.error) return r;
+  if (r.table.cols.length < 2) return { error: 'В файле найдена только одна колонка. Проверьте разделитель (допустимы «,», «;», табуляция).' };
+  r.delim = delim;
+  r.nullVal = NULLV;
+  return r;
+}
+function parseLas(text){
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/);
+  let sec = '', curves = [], hdr = {}, aIdx = -1, aHeader = '';
+  for (let i = 0; i < lines.length; i++){
+    const l = lines[i].trim();
+    if (!l || l[0] === '#') continue;
+    if (l[0] === '~'){
+      sec = l[1] ? l[1].toUpperCase() : '';
+      if (sec === 'A'){ aIdx = i; aHeader = l.slice(2).trim(); break; }
+      continue;
+    }
+    if ('VWCP'.includes(sec) && sec){
+      const m = l.match(/^([^.\s:]+)\s*\.(\S*)\s*(.*?)\s*:\s*(.*)$/);
+      if (!m) continue;
+      if (sec === 'C') curves.push({ name: m[1], unit: m[2] });
+      else hdr[m[1].toUpperCase()] = m[3].trim();
+    }
+  }
+  if (aIdx < 0) return { error: 'В LAS-файле не найден раздел ~A с данными.' };
+  const vers = hdr.VERS || '';
+  const wrap = (hdr.WRAP || '').toUpperCase();
+  if (wrap.startsWith('Y')) return { error: 'LAS с WRAP = YES не поддерживается. Нужен LAS 2.0 с WRAP = NO (одна строка на отсчёт глубины).' };
+  if (vers && !/^2(\.0*)?$/.test(vers.trim())) return { error: 'Поддерживается только LAS версии 2.0 (в файле указана версия ' + esc(vers) + ').' };
+  if (!curves.length && aHeader) curves = aHeader.split(/\s+/).map(n => ({ name: n, unit: '' }));
+  if (!curves.length) return { error: 'В LAS-файле не найден раздел ~C со списком кривых.' };
+  const nC = curves.length, rows = []; let bad = 0, total = 0;
+  for (let i = aIdx + 1; i < lines.length; i++){
+    const l = lines[i].trim();
+    if (!l || l[0] === '#' || l[0] === '~') continue;
+    total++;
+    const tok = l.split(/\s+/);
+    if (tok.length !== nC){ bad++; continue; }
+    rows.push(tok.map(t => { const v = toNum(t); return Number.isFinite(v) ? v : t; }));
+  }
+  if (!rows.length) return { error: 'В разделе ~A нет строк данных, подходящих по числу колонок (' + nC + ').' };
+  const warns = [];
+  if (!vers) warns.push({ level: 'warn', code: 'las', text: 'В LAS-файле не указана версия (VERS); файл прочитан как LAS 2.0.' });
+  if (bad) warns.push({ level: 'warn', code: 'lasrows', text: 'Пропущено строк ~A с неверным числом значений: ' + bad + ' из ' + total + '.' });
+  const du = (curves[0].unit || '').toUpperCase();
+  if (['F', 'FT', 'FEET'].includes(du)) warns.push({ level: 'warn', code: 'ft', text: 'Глубина в футах: приложение работает в метрах и не конвертирует единицы.' });
+  const nv = toNum(hdr.NULL);
+  return {
+    table: { cols: curves.map(c => c.name), units: curves.map(c => c.unit), rows },
+    nullVal: Number.isFinite(nv) ? nv : NULLV, warns, meta: { vers, wrap }
+  };
+}
+function aoaFromWb(wb, idx){
+  const ws = wb.Sheets[wb.SheetNames[idx]];
+  return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null, blankrows: false });
+}
+const UNSUPPORTED_EXT = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'bmp', 'tif', 'tiff', 'webp'];
+const UNSUPPORTED_MSG = 'Файлы PDF и изображения не поддерживаются: приложение читает только табличные данные. Экспортируйте кривые в CSV, LAS или XLSX.';
+
+async function loadSource(file, kind){
+  const name = file.name, ext = (name.split('.').pop() || '').toLowerCase();
+  if (UNSUPPORTED_EXT.includes(ext)) return { error: UNSUPPORTED_MSG };
+  let buf;
+  try { buf = await file.arrayBuffer(); } catch (e){ return { error: 'Не удалось прочитать файл: ' + e.message }; }
+  if (!buf.byteLength) return { error: 'Файл пустой.' };
+  if (['xlsx', 'xls', 'xlsm'].includes(ext)){
+    if (!window.XLSX) return { error: 'Библиотека чтения Excel не загрузилась (нет доступа к cdnjs.cloudflare.com). Используйте CSV или LAS.' };
+    let wb;
+    try { wb = XLSX.read(buf, { type: 'array' }); } catch (e){ return { error: 'Не удалось прочитать Excel-файл: ' + e.message }; }
+    if (!wb.SheetNames.length) return { error: 'В Excel-книге нет листов.' };
+    return { src: { kind: 'xlsx', name, format: ext === 'xls' ? 'Excel XLS' : 'Excel XLSX', wb, sheetNames: wb.SheetNames.slice(), sheet: 0 } };
+  }
+  const text = decodeText(buf);
+  if (/[\u0000]/.test(text.slice(0, 2000))) return { error: 'Файл похож на бинарный и не является таблицей CSV/LAS. Поддерживаются CSV, LAS 2.0 и Excel.' };
+  const isLas = ext === 'las' || /^\s*~V/im.test(text.slice(0, 3000));
+  if (isLas){
+    if (kind === 'core') return { error: 'Для керна поддерживаются CSV и Excel (XLSX/XLS), формат LAS не подходит.' };
+    return { src: { kind: 'las', name, format: 'LAS 2.0', text } };
+  }
+  return { src: { kind: 'csv', name, format: ext === 'tsv' ? 'TSV' : 'CSV', text } };
+}
+function tableFromSrc(src){
+  if (src.kind === 'las') return parseLas(src.text);
+  if (src.kind === 'csv') return parseCsvText(src.text);
+  if (src.kind === 'xlsx'){
+    const r = tableFromAoa(aoaFromWb(src.wb, src.sheet));
+    if (r.error) return { error: 'Лист «' + src.sheetNames[src.sheet] + '»: ' + r.error };
+    r.nullVal = NULLV; return r;
+  }
+  return { error: 'Неизвестный тип источника.' };
+}
+
+/* ============================== ОБРАБОТКА ГИС ============================== */
+const REQ = ['DEPTH', 'GR', 'RHOB'], OPT = ['NPHI', 'RT'];
+function buildLog(table, map, nullVal){
+  const warns = [], add = (level, code, text) => warns.push({ level, code, text });
+  const missing = REQ.filter(k => !(map[k] >= 0));
+  if (missing.length){
+    add('error', 'missing', 'Не выбраны обязательные колонки: ' + missing.join(', ') + '. Расчёт не выполняется.');
+    return { log: null, warns, meta: { rows: table.rows.length } };
+  }
+  const names = ['DEPTH', 'GR', 'RHOB'].concat(OPT.filter(k => map[k] >= 0));
+  const stat = {}; names.forEach(k => stat[k] = { blank: 0, nul: 0, bad: 0 });
+  const recs = []; let noDepth = 0;
+  for (const r of table.rows){
+    const rec = {};
+    for (const k of names){
+      const v = r[map[k]];
+      if (isBlank(v)){ stat[k].blank++; rec[k] = NaN; continue; }
+      const x = toNum(v);
+      if (!Number.isFinite(x)){ stat[k].bad++; rec[k] = NaN; continue; }
+      if (Math.abs(x - nullVal) < 1e-9){ stat[k].nul++; rec[k] = NaN; continue; }
+      rec[k] = x;
+    }
+    if (!Number.isFinite(rec.DEPTH)){ noDepth++; continue; }
+    recs.push(rec);
+  }
+  const sumOf = f => names.map(k => [k, stat[k][f]]).filter(a => a[1] > 0).map(a => a[0] + ' — ' + a[1]).join('; ');
+  if (sumOf('blank')) add('warn', 'empty', 'Пустые значения: ' + sumOf('blank') + '.');
+  if (sumOf('nul')) add('warn', 'null', 'Значения NULL (' + nullVal + '): ' + sumOf('nul') + '. Такие точки не участвуют в расчёте и разрывают линии.');
+  if (sumOf('bad')) add('warn', 'nonnum', 'Нечисловые значения: ' + sumOf('bad') + '.');
+  if (noDepth) add('warn', 'nodepth', 'Строк без корректной глубины исключено из расчёта: ' + noDepth + '.');
+  const meta = { rows: table.rows.length };
+  if (!recs.length){
+    add('error', 'few', 'Нет строк с корректной глубиной. Расчёт не выполняется.');
+    return { log: null, warns, meta };
+  }
+  let dec = 0; for (let i = 1; i < recs.length; i++) if (recs[i].DEPTH < recs[i - 1].DEPTH - EPS) dec++;
+  if (dec > 0){
+    add('warn', 'order', 'Исходная последовательность глубин нарушена (убывание глубины в ' + dec + ' местах). Данные отсортированы по возрастанию глубины для расчёта и графика.');
+    recs.sort((a, b) => a.DEPTH - b.DEPTH);
+  }
+  const uniq = []; let dup = 0;
+  for (const r of recs){
+    if (uniq.length && Math.abs(r.DEPTH - uniq[uniq.length - 1].DEPTH) < EPS){ dup++; continue; }
+    uniq.push(r);
+  }
+  if (dup) add('warn', 'dup', 'Повторяющиеся глубины: ' + dup + '. Оставлена первая строка для каждой глубины, остальные исключены (эффективная толщина не считается дважды).');
+  const n = uniq.length;
+  const dep = new Float64Array(n), gr = new Float64Array(n), rhob = new Float64Array(n);
+  const nphi = new Float64Array(n).fill(NaN), rt = new Float64Array(n).fill(NaN), valid = new Uint8Array(n);
+  let nValid = 0;
+  uniq.forEach((r, i) => {
+    dep[i] = r.DEPTH; gr[i] = r.GR; rhob[i] = r.RHOB;
+    if (map.NPHI >= 0) nphi[i] = r.NPHI;
+    if (map.RT >= 0) rt[i] = r.RT;
+    valid[i] = Number.isFinite(r.GR) && Number.isFinite(r.RHOB) ? 1 : 0;
+    nValid += valid[i];
+  });
+  const diffs = []; for (let i = 1; i < n; i++) diffs.push(dep[i] - dep[i - 1]);
+  const step = diffs.length ? median(diffs) : NaN;
+  meta.dmin = dep[0]; meta.dmax = dep[n - 1]; meta.step = step; meta.n = n; meta.valid = nValid;
+  if (dep[0] <= 0) add('warn', 'range', 'Некорректный диапазон глубин: встречается глубина ≤ 0 (минимум ' + fmt(dep[0], 2) + ' м).');
+  if (!(step > 0)) { add('error', 'few', 'Не удалось определить шаг глубины: нужно не менее двух различных глубин.'); return { log: null, warns, meta }; }
+  const gaps = []; for (let i = 1; i < n; i++) if (dep[i] - dep[i - 1] > 1.5 * step + EPS) gaps.push([dep[i - 1], dep[i]]);
+  if (gaps.length){
+    const list = gaps.slice(0, 10).map(g => fmt(g[0], 1) + '–' + fmt(g[1], 1)).join('; ');
+    add('warn', 'gap', 'Разрывы глубинной сетки (больше 1,5 медианного шага, ' + gaps.length + '): ' + list + (gaps.length > 10 ? ' и ещё ' + (gaps.length - 10) : '') + ' м.');
+  }
+  if (nValid < 10){
+    add('error', 'few', 'Недостаточно корректных строк: ' + nValid + ' (нужно не менее 10 с числовыми DEPTH, GR и RHOB). Расчёт не выполняется.');
+    return { log: null, warns, meta };
+  }
+  let grBad = 0, rhBad = 0;
+  for (let i = 0; i < n; i++){ if (valid[i]){ if (gr[i] < 0 || gr[i] > 500) grBad++; if (rhob[i] < 1 || rhob[i] > 3.5) rhBad++; } }
+  if (grBad) add('warn', 'phys', 'GR вне допустимого диапазона 0–500 API: ' + grBad + ' точек.');
+  if (rhBad) add('warn', 'phys', 'RHOB вне допустимого диапазона 1,0–3,5 г/см³: ' + rhBad + ' точек.');
+  const log = { n, dep, gr, rhob, nphi, rt, valid, step, dmin: dep[0], dmax: dep[n - 1], hasNphi: map.NPHI >= 0, hasRt: map.RT >= 0 };
+  if (!warns.length) add('ok', 'ok', 'Критичных замечаний нет: пропусков, дублей и нарушений порядка глубины не найдено.');
+  return { log, warns, meta };
+}
+
+/* ============================== РАСЧЁТ ============================== */
+// Эти две функции можно заменить на методику, утверждённую петрофизиком, не меняя остальной код.
+function calcIgr(gr, p){ return (gr - p.grClean) / (p.grShale - p.grClean); }
+function calcVsh(gr, p){
+  const igr = clamp(calcIgr(gr, p), 0, 1);
+  if (p.method === 'larT') return clamp(0.083 * (Math.pow(2, 3.7 * igr) - 1), 0, 1);
+  if (p.method === 'larO') return clamp(0.33 * (Math.pow(2, 2 * igr) - 1), 0, 1);
+  return igr;
+}
+function calcPhi(rhob, p){ return clamp((p.rhoMa - rhob) / (p.rhoMa - p.rhoFl), 0, 0.30); }
+
+function inRange(d, top, base, dmax){
+  if (d < top - EPS) return false;
+  if (base >= dmax - EPS) return d <= dmax + EPS;
+  return d < base - EPS;
+}
+function findReservoirs(L, vsh, phi, cuts, top, base){
+  const n = L.n, step = L.step, flag = new Uint8Array(n);
+  for (let i = 0; i < n; i++){
+    flag[i] = (L.valid[i] && inRange(L.dep[i], top, base, L.dmax) && vsh[i] <= cuts.v + 1e-12 && phi[i] >= cuts.p - 1e-12) ? 1 : 0;
+  }
+  const limit = base >= L.dmax - EPS ? Infinity : base;
+  const hOf = (i, nextInInt) => {
+    let h = nextInInt ? L.dep[i + 1] - L.dep[i] : step;
+    return Math.min(h, limit - L.dep[i]);
+  };
+  const out = [];
+  let i = 0;
+  while (i < n){
+    if (!flag[i]){ i++; continue; }
+    let j = i;
+    while (j + 1 < n && flag[j + 1] && L.dep[j + 1] - L.dep[j] <= 1.5 * step + EPS) j++;
+    let thick = 0, sv = 0, sp = 0, lastH = 0;
+    for (let k = i; k <= j; k++){
+      const h = hOf(k, k < j);
+      thick += h; sv += vsh[k] * h; sp += phi[k] * h; lastH = h;
+    }
+    out.push({ i0: i, i1: j, top: L.dep[i], base: L.dep[j] + lastH, thick, vsh: thick > 0 ? sv / thick : NaN, phi: thick > 0 ? sp / thick : NaN });
+    i = j + 1;
+  }
+  const kept = cuts.min > 0 ? out.filter(o => o.thick + 1e-9 >= cuts.min) : out;
+  const flag2 = new Uint8Array(n);
+  kept.forEach(o => { for (let k = o.i0; k <= o.i1; k++) flag2[k] = 1; });
+  return { intervals: kept, flag: flag2 };
+}
+function coreOverlap(c, top, base){ return c.top < base - EPS && c.base > top + EPS; }
+
+function validateParams(){
+  const f = { grClean: $('pGrClean').value, grShale: $('pGrShale').value, rhoMa: $('pRhoMa').value, rhoFl: $('pRhoFl').value };
+  const names = { grClean: 'GR_clean', grShale: 'GR_shale', rhoMa: 'RHO_matrix', rhoFl: 'RHO_fluid' };
+  const errs = [], vals = {};
+  for (const k in f){
+    const x = toNum(f[k]);
+    if (!Number.isFinite(x)) errs.push(names[k] + ' должен быть числом.'); else vals[k] = x;
+    $({ grClean: 'pGrClean', grShale: 'pGrShale', rhoMa: 'pRhoMa', rhoFl: 'pRhoFl' }[k]).classList.toggle('bad', !Number.isFinite(x));
+  }
+  if (!errs.length){
+    if (vals.grShale === vals.grClean){ errs.push('GR_shale не должен быть равен GR_clean.'); $('pGrShale').classList.add('bad'); }
+    if (vals.rhoMa === vals.rhoFl){ errs.push('RHO_matrix не должна быть равна RHO_fluid.'); $('pRhoMa').classList.add('bad'); }
+  }
+  if (!errs.length) Object.assign(state.p, vals);
+  state.p.method = $('pMethod').value;
+  return errs;
+}
+function validateInterval(){
+  const t = toNum($('iTop').value), b = toNum($('iBase').value), m = toNum($('iMin').value || '0');
+  const errs = [];
+  if (!Number.isFinite(t)) errs.push('Кровля интервала должна быть числом.');
+  if (!Number.isFinite(b)) errs.push('Подошва интервала должна быть числом.');
+  if (Number.isFinite(t) && Number.isFinite(b) && t >= b) errs.push('Кровля интервала должна быть меньше подошвы.');
+  if (!Number.isFinite(m) || m < 0) errs.push('Минимальная мощность должна быть числом не меньше 0.');
+  $('iTop').classList.toggle('bad', !Number.isFinite(t) || (Number.isFinite(b) && t >= b));
+  $('iBase').classList.toggle('bad', !Number.isFinite(b) || (Number.isFinite(t) && t >= b));
+  if (!errs.length){ state.iTop = t; state.iBase = b; state.minThick = m; }
+  return errs;
+}
+
+function computeAll(){
+  state.paramErr = validateParams();
+  state.intervalErr = validateInterval();
+  $('paramMsg').innerHTML = state.paramErr.map(e => '<div class="msg err">' + esc(e) + '</div>').join('');
+  $('intervalMsg').innerHTML = state.intervalErr.map(e => '<div class="msg err">' + esc(e) + '</div>').join('');
+  $('methodNote').textContent = state.p.method === 'lin' ? '' : 'Нелинейные методы приведены справочно: выбор методики и её применимость к породам утверждает петрофизик.';
+  state.res = null;
+  const L = state.log;
+  if (!L){ renderAll(); return; }
+  if (state.paramErr.length){ state.blockMsg = 'Расчёт приостановлен: исправьте параметры методики.'; renderAll(); return; }
+  if (state.intervalErr.length){ state.blockMsg = 'Расчёт приостановлен: исправьте границы интервала.'; renderAll(); return; }
+  const vsh = new Float64Array(L.n).fill(NaN), phi = new Float64Array(L.n).fill(NaN);
+  for (let i = 0; i < L.n; i++) if (L.valid[i]){ vsh[i] = calcVsh(L.gr[i], state.p); phi[i] = calcPhi(L.rhob[i], state.p); }
+  const r = findReservoirs(L, vsh, phi, { v: state.vcut, p: state.pcut, min: state.minThick }, state.iTop, state.iBase);
+  r.vsh = vsh; r.phi = phi;
+  r.totalThick = r.intervals.reduce((s, o) => s + o.thick, 0);
+  r.avgPhi = r.totalThick > 0 ? r.intervals.reduce((s, o) => s + o.phi * o.thick, 0) / r.totalThick : NaN;
+  r.intervals.forEach(o => { o.core = state.cores.length ? state.cores.some(c => coreOverlap(c, o.top, o.base)) : null; });
+  state.res = r;
+  renderAll();
+}
+
+/* ============================== КЕРН ============================== */
+function buildCore(table, map, log){
+  const warns = [], add = (level, code, text) => warns.push({ level, code, text });
+  const missing = ['TOP', 'BASE', 'CORE_PHI'].filter(k => !(map[k] >= 0));
+  if (missing.length){
+    add('error', 'missing', 'Не выбраны обязательные поля керна: ' + missing.join(', ') + '. Керн не отображается.');
+    return { cores: [], warns };
+  }
+  const cores = []; let empty = 0, nonnum = 0, order = 0;
+  table.rows.forEach((r, k) => {
+    const raw = ['TOP', 'BASE', 'CORE_PHI'].map(key => r[map[key]]);
+    if (raw.some(isBlank)){ empty++; return; }
+    const v = raw.map(toNum);
+    if (v.some(x => !Number.isFinite(x))){ nonnum++; return; }
+    const [top, base, phi] = v;
+    if (base <= top){ order++; return; }
+    const get = key => (map[key] >= 0 && !isBlank(r[map[key]])) ? r[map[key]] : null;
+    cores.push({ top, base, phi, perm: get('PERM'), lith: get('LITHOLOGY'), rec: get('RECOVERY'), row: k + 1 });
+  });
+  if (empty) add('warn', 'empty', 'Строки керна с пустыми TOP, BASE или CORE_PHI исключены: ' + empty + '.');
+  if (nonnum) add('warn', 'nonnum', 'Строки керна с нечисловыми значениями исключены: ' + nonnum + '.');
+  if (order) add('warn', 'order', 'BASE меньше или равна TOP — строки исключены: ' + order + '.');
+  cores.sort((a, b) => a.top - b.top);
+  const ov = [];
+  for (let i = 1; i < cores.length; i++) if (cores[i].top < cores[i - 1].base - EPS) ov.push(fmt(cores[i - 1].top, 2) + '–' + fmt(cores[i - 1].base, 2) + ' и ' + fmt(cores[i].top, 2) + '–' + fmt(cores[i].base, 2));
+  if (ov.length) add('warn', 'overlap', 'Перекрывающиеся керновые интервалы (' + ov.length + '): ' + ov.slice(0, 6).join('; ') + (ov.length > 6 ? ' и ещё ' + (ov.length - 6) : '') + '.');
+  if (log){
+    const out = cores.filter(c => c.top < log.dmin - EPS || c.base > log.dmax + EPS);
+    if (out.length) add('warn', 'outside', 'Интервалы керна за пределами диапазона ГИС (' + fmt(log.dmin, 1) + '–' + fmt(log.dmax, 1) + ' м): ' + out.length + '.');
+  }
+  const neg = cores.filter(c => c.phi < 0).length, big = cores.filter(c => c.phi > 1).length;
+  if (neg) add('warn', 'neg', 'CORE_PHI меньше 0: ' + neg + ' интервалов.');
+  if (big) add('warn', 'pct', 'CORE_PHI больше 1 (' + big + ' интервалов). Проверьте единицы: пористость могла быть указана в процентах, а не в долях единицы. Значения не преобразованы.');
+  if (!cores.length) add('error', 'none', 'Не осталось ни одного корректного керна интервала.');
+  else if (!warns.length) add('ok', 'ok', 'Замечаний к данным керна нет.');
+  return { cores, warns };
+}
+
+/* ============================== СИНТЕТИЧЕСКИЕ ДАННЫЕ ============================== */
+function mulberry32(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeSynthetic(seed){
+  const rnd = mulberry32(seed || 42);
+  const gauss = () => { let u = 0; while (u === 0) u = rnd(); const v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const sig = (x, w) => 1 / (1 + Math.exp(-x / (w || 0.4)));
+  const beds = [[2050, 5], [2100, 10], [2150, 15]];
+  const rows = [];
+  for (let k = 0; k <= 2000; k++){
+    const d = Math.round((2000 + k * 0.1) * 10) / 10;
+    let s = 0; for (const b of beds) s += sig(d - b[0]) - sig(d - (b[0] + b[1]));
+    s = clamp(s, 0, 1);
+    let gr = 77.5 + s * (35 - 77.5) + 3.0 * gauss();
+    let rh = 2.525 + s * (2.275 - 2.525) + 0.012 * gauss();
+    let nf = 0.36 + s * (0.23 - 0.36) + 0.010 * gauss();
+    let rt = Math.pow(10, Math.log10(2) + s * (Math.log10(30) - Math.log10(2)) + 0.06 * gauss());
+    gr = clamp(gr, 25, 100); rh = clamp(rh, 2.20, 2.60); nf = clamp(nf, 0.18, 0.42); rt = clamp(rt, 1, 80);
+    const gap = (k >= 200 && k < 210) || (k >= 1050 && k < 1060);
+    rows.push(gap ? [d, NULLV, NULLV, NULLV, NULLV]
+      : [d, Number(gr.toFixed(2)), Number(rh.toFixed(4)), Number(nf.toFixed(4)), Number(rt.toFixed(3))]);
+  }
+  return { cols: ['DEPT', 'GR', 'RHOB', 'NPHI', 'RT'], units: ['M', 'API', 'G/CC', 'V/V', 'OHMM'], rows };
+}
+const DEC = [1, 2, 4, 4, 3];
+function fmtCell(v, j){ return v === NULLV ? '-999.25' : Number(v).toFixed(DEC[j]); }
+function synthCsv(t){
+  const L = [t.cols.join(','), t.units.join(',')];
+  t.rows.forEach(r => L.push(r.map(fmtCell).join(',')));
+  return L.join('\n') + '\n';
+}
+function synthLas(t){
+  const h = [
+    '~VERSION INFORMATION', ' VERS.                  2.0 : CWLS LOG ASCII STANDARD - VERSION 2.0', ' WRAP.                   NO : ONE LINE PER DEPTH STEP',
+    '~WELL INFORMATION', ' STRT.M              2000.0 : START DEPTH', ' STOP.M              2200.0 : STOP DEPTH', ' STEP.M                 0.1 : STEP',
+    ' NULL.              -999.25 : NULL VALUE', ' COMP.      SYNTHETIC DATA : COMPANY', ' WELL.                 UZ-1 : WELL', ' FLD .            SYNTHETIC : FIELD',
+    '~CURVE INFORMATION', ' DEPT.M                     : DEPTH', ' GR  .API                   : GAMMA RAY', ' RHOB.G/CC                  : BULK DENSITY',
+    ' NPHI.V/V                   : NEUTRON POROSITY', ' RT  .OHMM                  : TRUE RESISTIVITY',
+    '~PARAMETER INFORMATION', ' SEED.                   42 : RANDOM SEED', '~OTHER', ' Synthetic log UZ-1: shale + 3 sand beds', '~A  DEPT        GR       RHOB      NPHI        RT'
+  ];
+  t.rows.forEach(r => h.push(r.map((v, j) => fmtCell(v, j).padStart(j === 0 ? 9 : 10)).join('')));
+  return h.join('\n') + '\n';
+}
+function synthXlsxWb(t){
+  const wb = XLSX.utils.book_new();
+  const aoa = [t.cols].concat(t.rows);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'UZ-1');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+    ['Скважина', 'UZ-1 (синтетическая)'], ['Интервал, м', '2000–2200'], ['Шаг, м', 0.1], ['NULL', -999.25],
+    ['Единицы', t.units.join(', ')], ['Примечание', 'Лист «UZ-1» содержит данные; этот лист — описание']
+  ]), 'Info');
+  return wb;
+}
+const CORE_TEST = [
+  [2051.0, 2051.5, 0.205, 120, 'Песчаник', 1.00], [2053.0, 2053.8, 0.226, 310, 'Песчаник', 0.95],
+  [2101.5, 2102.3, 0.231, 450, 'Песчаник', 1.00], [2107.0, 2108.0, 0.218, 260, 'Песчаник', 0.90],
+  [2152.0, 2153.0, 0.229, 520, 'Песчаник', 1.00], [2158.5, 2159.5, 0.221, 380, 'Песчаник', 0.98]
+];
+const CORE_COLS = ['TOP', 'BASE', 'CORE_PHI', 'PERM', 'LITHOLOGY', 'RECOVERY'];
+function coreCsv(rows, cols){
+  return [(cols || CORE_COLS).join(',')].concat(rows.map(r => r.map(v => typeof v === 'number' ? String(v) : v).join(','))).join('\n') + '\n';
+}
+function coreXlsxWb(){
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([CORE_COLS].concat(CORE_TEST)), 'Керн');
+  return wb;
+}
+function badLogCsv(){
+  const rows = [];
+  for (let k = 0; k < 40; k++) rows.push([2000 + k * 0.5, 40 + (k % 7), 2.3 + (k % 5) * 0.01, 0.2 + (k % 4) * 0.01, 10 + k]);
+  rows[5][0] = rows[4][0];                         // дубль глубины
+  const tmp = rows[10]; rows[10] = rows[11]; rows[11] = tmp;  // нарушение порядка
+  rows[15][1] = NULLV;                             // NULL
+  rows[16][2] = '';                                // пустое значение
+  rows[17][1] = 'abc';                             // нечисловое
+  rows.splice(25, 4);                              // разрыв сетки
+  return ['DEPT,GR,RHOB,NPHI,RT', 'M,API,G/CC,V/V,OHMM'].concat(rows.map(r => r.join(','))).join('\n') + '\n';
+}
+function badCoreCsv(){
+  const rows = [
+    [2051.0, 2052.0, 0.20, 100, 'Песчаник', 1], [2051.5, 2052.5, 0.21, 110, 'Песчаник', 1],   // перекрытие
+    [2060.0, 2059.0, 0.19, 90, 'Песчаник', 1],                                                // BASE ≤ TOP
+    [2070.0, 2071.0, 21.5, 80, 'Песчаник', 1],                                                // проценты
+    [2080.0, 2081.0, -0.02, 70, 'Песчаник', 1],                                               // отрицательная
+    [3000.0, 3001.0, 0.20, 60, 'Песчаник', 1],                                                // вне диапазона
+    [2090.0, 2091.0, 'abc', 50, 'Песчаник', 1]                                                // нечисловое
+  ];
+  return coreCsv(rows);
+}
+
+/* ============================== ЭКСПОРТ ============================== */
+function csvQuote(s, d){ s = String(s); return (s.includes(d) || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+function exportCsv(L, R, cores, top, base, delim, dec){
+  const nf = (x, d) => { if (!Number.isFinite(x)) return ''; let s = String(+x.toFixed(d)); if (dec === ',') s = s.replace('.', ','); return s; };
+  const out = ['DEPTH', 'GR', 'RHOB', 'VSH', 'PHI', 'COLLECTOR', 'CORE_PHI', 'CORE_LITHOLOGY'].join(delim);
+  const lines = [out];
+  for (let i = 0; i < L.n; i++){
+    if (!inRange(L.dep[i], top, base, L.dmax)) continue;
+    const c = cores.find(c => L.dep[i] >= c.top - EPS && L.dep[i] < c.base - EPS);
+    lines.push([
+      nf(L.dep[i], 4), nf(L.gr[i], 3), nf(L.rhob[i], 4), nf(R.vsh[i], 5), nf(R.phi[i], 5), R.flag[i] ? 1 : 0,
+      c ? nf(c.phi, 5) : '', c && c.lith !== null ? csvQuote(c.lith, delim) : ''
+    ].join(delim));
+  }
+  return lines.join('\r\n') + '\r\n';
+}
+
+/* ============================== СКАЧИВАНИЕ ============================== */
+function download(name, data, mime, fallbackText){
+  try {
+    const blob = data instanceof Blob ? data : new Blob([data], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  } catch (e){ /* запасной вариант ниже */ }
+  state.dl = { name, text: fallbackText };
+  $('dlBarText').textContent = 'Файл «' + name + '» подготовлен. Файл не скачался?';
+  $('dlBar').hidden = false;
+}
+function showDialog(){
+  if (!state.dl) return;
+  $('dlgTitle').textContent = 'Текст файла «' + state.dl.name + '»';
+  $('dlgText').value = state.dl.text;
+  $('dlg').hidden = false; $('dlgText').focus();
+}
+function copyDialog(){
+  const ta = $('dlgText');
+  ta.focus(); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e){}
+  if (!ok && navigator.clipboard){ navigator.clipboard.writeText(ta.value).then(() => { $('dlgCopy').textContent = 'Скопировано'; }, () => {}); return; }
+  $('dlgCopy').textContent = ok ? 'Скопировано' : 'Выделите текст и скопируйте вручную';
+}
+const tsvOf = aoa => aoa.map(r => r.join('\t')).join('\n');
+
+/* ============================== ИМПОРТ: UI ============================== */
+function msgHtml(level, text){ return '<div class="msg ' + level + '">' + esc(text) + '</div>'; }
+function selectHtml(id, cols, value, optional){
+  return '<select id="' + id + '">' + (optional ? '<option value="-1">— не выбрано —</option>' : '<option value="-1">— выберите —</option>') +
+    cols.map((c, i) => '<option value="' + i + '"' + (i === value ? ' selected' : '') + '>' + esc(c) + '</option>').join('') + '</select>';
+}
+function renderMapping(kind){
+  const host = $(kind === 'gis' ? 'gisMap' : 'coreMap'), s = state[kind];
+  if (!s){ host.innerHTML = ''; return; }
+  const keys = kind === 'gis' ? ['DEPTH', 'GR', 'RHOB', 'NPHI', 'RT'] : ['TOP', 'BASE', 'CORE_PHI', 'PERM', 'LITHOLOGY', 'RECOVERY'];
+  const req = kind === 'gis' ? REQ : ['TOP', 'BASE', 'CORE_PHI'];
+  const lab = { DEPTH: 'DEPTH — глубина', GR: 'GR — гамма-каротаж', RHOB: 'RHOB — плотность', NPHI: 'NPHI — нейтронный', RT: 'RT — сопротивление',
+    TOP: 'TOP — кровля', BASE: 'BASE — подошва', CORE_PHI: 'CORE_PHI — пористость', PERM: 'PERM — проницаемость', LITHOLOGY: 'LITHOLOGY — литология', RECOVERY: 'RECOVERY — вынос' };
+  const needOpen = req.some(k => !(s.map[k] >= 0));
+  host.innerHTML = '<details' + (needOpen ? ' open' : '') + ' style="margin-top:8px"><summary>Соответствие колонок' + (needOpen ? ' — нужно выбрать' : ' (подобрано автоматически)') + '</summary><div class="fields" style="margin-top:8px">' + keys.map(k =>
+    '<label>' + lab[k] + (req.includes(k) ? ' *' : '') + selectHtml(kind + '_' + k, s.table.cols, s.map[k], !req.includes(k)) + '</label>').join('') + '</div></details>';
+  keys.forEach(k => $(kind + '_' + k).addEventListener('change', e => {
+    s.map[k] = parseInt(e.target.value, 10);
+    if (kind === 'gis') rebuildGis(false); else rebuildCore();
+  }));
+}
+function renderSheet(kind){
+  const s = state[kind], wrap = $(kind + 'SheetWrap'), sel = $(kind + 'Sheet');
+  if (s && s.src.kind === 'xlsx' && s.src.sheetNames.length > 1){
+    wrap.hidden = false;
+    sel.innerHTML = s.src.sheetNames.map((n, i) => '<option value="' + i + '"' + (i === s.src.sheet ? ' selected' : '') + '>' + esc(n) + '</option>').join('');
+  } else wrap.hidden = true;
+}
+function renderGisInfo(){
+  const g = state.gis, host = $('gisInfo');
+  if (!g){ host.innerHTML = ''; return; }
+  const m = state.gisMeta || {};
+  const cols = g.table.cols.map((c, i) => esc(c) + (g.table.units && g.table.units[i] ? ' (' + esc(g.table.units[i]) + ')' : '')).join(', ');
+  host.innerHTML = '<dl class="kv"><dt>Файл</dt><dd>' + esc(g.name) + '</dd><dt>Формат</dt><dd>' + esc(g.format) + '</dd>' +
+    '<dt>Строк</dt><dd>' + g.table.rows.length + '</dd><dt>Кривые</dt><dd>' + cols + '</dd>' +
+    '<dt>Глубина</dt><dd>' + (m.dmin !== undefined ? fmt(m.dmin, 1) + ' – ' + fmt(m.dmax, 1) + ' м' : 'будет определена после выбора DEPTH') + '</dd>' +
+    '<dt>Шаг</dt><dd>' + (m.step > 0 ? '≈ ' + fmt(m.step, 3) + ' м' : '—') + '</dd></dl>';
+}
+function renderCoreInfo(){
+  const c = state.core, host = $('coreInfo');
+  if (!c){ host.innerHTML = '<p class="note">Керн не загружен: дорожка керна остаётся пустой. Расчёт работает без керна.</p>'; return; }
+  const cols = c.table.cols.map(esc).join(', ');
+  host.innerHTML = '<dl class="kv"><dt>Файл</dt><dd>' + esc(c.name) + '</dd><dt>Формат</dt><dd>' + esc(c.format) + '</dd>' +
+    '<dt>Строк</dt><dd>' + c.table.rows.length + '</dd><dt>Колонки</dt><dd>' + cols + '</dd>' +
+    '<dt>Интервалов</dt><dd>' + state.cores.length + '</dd></dl>';
+}
+function renderQc(){
+  const li = w => '<li class="lv-' + w.level + '">' + esc(w.text) + '</li>';
+  const log = state.logWarns.concat(state.gis && state.gis.warnsLoad ? state.gis.warnsLoad : []);
+  $('qcLog').innerHTML = log.length ? '<ul class="qc">' + log.map(li).join('') + '</ul>' : '<p class="note">Данные ГИС не загружены.</p>';
+  $('qcCore').innerHTML = state.core ? ('<ul class="qc">' + state.coreWarns.map(li).join('') + '</ul>') : '<p class="note">Керн не загружен.</p>';
+}
+
+function setGisSource(src, builtinTable){
+  let table, nullVal, warnsLoad = [];
+  if (builtinTable){ table = builtinTable; nullVal = NULLV; }
+  else {
+    const r = tableFromSrc(src);
+    if (r.error){ $('gisMsg').innerHTML = msgHtml('err', 'Не удалось прочитать данные: ' + r.error + ' Предыдущие данные сохранены.'); return false; }
+    table = r.table; nullVal = r.nullVal; warnsLoad = r.warns || [];
+  }
+  state.gis = { name: src.name, format: src.format, src, table, nullVal, warnsLoad, map: detectColumns(table.cols, ALIASES) };
+  $('gisMsg').innerHTML = '';
+  renderSheet('gis'); renderMapping('gis');
+  rebuildGis(true);
+  return true;
+}
+function rebuildGis(isNew){
+  const g = state.gis; if (!g) return;
+  const r = buildLog(g.table, g.map, g.nullVal);
+  state.log = r.log; state.logWarns = r.warns; state.gisMeta = r.meta;
+  if (state.log){
+    if (isNew || !Number.isFinite(state.iTop) || !Number.isFinite(state.iBase) || state.iTop >= state.iBase){
+      $('iTop').value = state.log.dmin; $('iBase').value = state.log.dmax;
+    }
+    state.view = [state.log.dmin, Math.max(state.log.dmax, state.log.dmin + state.log.step)];
+    $('srcChip').textContent = g.name + ' · ' + g.format;
+  } else {
+    state.blockMsg = 'Расчёт не начат: выберите колонки DEPTH, GR и RHOB (раздел «ГИС» → «Соответствие колонок»).';
+    $('srcChip').textContent = g.name + ' · ожидает выбора колонок';
+  }
+  renderGisInfo();
+  rebuildCore();
+}
+function rebuildCore(){
+  const c = state.core;
+  if (!c){ state.cores = []; state.coreWarns = []; renderCoreInfo(); renderQc(); computeAll(); return; }
+  const r = buildCore(c.table, c.map, state.log);
+  state.cores = r.cores; state.coreWarns = r.warns;
+  renderCoreInfo(); renderQc(); computeAll();
+}
+function setCoreSource(src){
+  const r = tableFromSrc(src);
+  if (r.error){ $('coreMsg').innerHTML = msgHtml('err', 'Не удалось прочитать керн: ' + r.error); return false; }
+  state.core = { name: src.name, format: src.format, src, table: r.table, map: detectColumns(r.table.cols, CORE_ALIASES) };
+  $('coreMsg').innerHTML = '';
+  renderSheet('core'); renderMapping('core'); rebuildCore();
+  return true;
+}
+async function onFile(kind, file){
+  if (!file) return;
+  const msgId = kind === 'gis' ? 'gisMsg' : 'coreMsg';
+  $(msgId).innerHTML = msgHtml('info', 'Чтение файла «' + file.name + '»…');
+  const r = await loadSource(file, kind);
+  if (r.error){ $(msgId).innerHTML = msgHtml('err', r.error); return; }
+  if (kind === 'gis') setGisSource(r.src); else setCoreSource(r.src);
+}
+function loadBuiltin(){
+  const t = makeSynthetic(42);
+  state.builtin = t;
+  state.iTop = NaN; state.iBase = NaN;
+  setGisSource({ kind: 'builtin', name: 'UZ-1 (встроенный пример)', format: 'Синтетические данные' }, t);
+}
+
+/* ============================== ПЛАНШЕТ ============================== */
+function niceStep(span, maxTicks){
+  const raw = span / maxTicks;
+  for (const s of [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 25, 50, 100, 200, 500, 1000]) if (s >= raw) return s;
+  return 1000;
+}
+function tickLabel(d, step){ return step >= 1 ? String(Math.round(d)) : d.toFixed(step < 0.5 ? 2 : 1); }
+
+function renderPlot(){
+  const host = $('plotHost'), L = state.log, R = state.res;
+  if (!L || !R){ host.innerHTML = '<div class="empty">' + esc(state.blockMsg) + '</div>'; return; }
+  const tracks = [{ id: 'depth', t: 'DEPTH, м' }, { id: 'gr', t: 'GR, API' }, { id: 'vsh', t: 'Vsh, д.ед.' }, { id: 'phi', t: 'PHI, д.ед.' }];
+  if (L.hasNphi) tracks.push({ id: 'nphi', t: 'NPHI, д.ед.' });
+  if (L.hasRt) tracks.push({ id: 'rt', t: 'RT, Ом·м' });
+  tracks.push({ id: 'core', t: 'КЕРН, PHI' }, { id: 'res', t: 'КОЛЛЕКТОР' });
+  const avail = Math.max(host.clientWidth - 2, 320), k = tracks.length - 1, GAP = 4, DW = 58;
+  const TW = Math.max(92, Math.floor((avail - DW - GAP * (k + 1)) / k));
+  const total = DW + GAP + k * (TW + GAP);
+  const T = 46, H = clamp(Math.round(window.innerHeight * 0.72), 460, 780), Ht = T + H + 6;
+  const [v0, v1] = state.view, span = v1 - v0;
+  const y = d => T + (d - v0) / span * H;
+  let x = 0; tracks.forEach(tr => { tr.x = x; tr.w = tr.id === 'depth' ? DW : TW; x += tr.w + GAP; });
+  const tr = id => tracks.find(t => t.id === id);
+
+  let grHi = 150; for (let i = 0; i < L.n; i++) if (L.valid[i] && L.gr[i] > grHi) grHi = Math.ceil(L.gr[i] / 50) * 50;
+  let rhLo = 1.95, rhHi = 2.95;
+  const cfg = {
+    gr:   { lo: 0, hi: grHi, arr: L.gr, col: 'var(--gr)', lg: false, f: v => String(v) },
+    vsh:  { lo: 0, hi: 1, arr: R.vsh, col: 'var(--vsh)', lg: false, f: v => v.toFixed(1) },
+    phi:  { lo: 0, hi: 0.30, arr: R.phi, col: 'var(--phi)', lg: false, f: v => v.toFixed(2) },
+    nphi: { lo: 0.45, hi: -0.15, arr: L.nphi, col: 'var(--nphi)', lg: false, f: v => v.toFixed(2) },
+    rt:   { lo: 0.2, hi: 2000, arr: L.rt, col: 'var(--rt)', lg: true, f: v => v >= 1 ? String(v) : v.toFixed(1) }
+  };
+  const xOf = (c, v, t) => {
+    if (c.lg){ v = Math.max(v, 1e-6); return t.x + (Math.log10(v) - Math.log10(c.lo)) / (Math.log10(c.hi) - Math.log10(c.lo)) * t.w; }
+    return t.x + (v - c.lo) / (c.hi - c.lo) * t.w;
+  };
+  const maxBreak = Math.max(1.5 * L.step, 2 * span / H);
+  const i0 = Math.max(0, lowerBound(L.dep, v0 - span * 0.02) - 1), i1 = Math.min(L.n, upperBound(L.dep, v1 + span * 0.02) + 1);
+  function pathOf(arr, c, t){
+    let idx = []; for (let i = i0; i < i1; i++) if (Number.isFinite(arr[i]) && (!c.lg || arr[i] > 0)) idx.push(i);
+    if (idx.length > H * 3){
+      const use = []; let bin = null, mn = -1, mx = -1;
+      const flush = () => { if (mn < 0) return; if (mn === mx) use.push(mn); else if (mn < mx) use.push(mn, mx); else use.push(mx, mn); };
+      for (const i of idx){
+        const b = Math.floor((L.dep[i] - v0) / span * H);
+        if (b !== bin){ flush(); bin = b; mn = mx = i; } else { if (arr[i] < arr[mn]) mn = i; if (arr[i] > arr[mx]) mx = i; }
+      }
+      flush(); idx = use;
+    }
+    let d = '', prev = -1;
+    for (const i of idx){
+      const X = xOf(c, arr[i], t).toFixed(1), Y = y(L.dep[i]).toFixed(1);
+      d += (prev < 0 || L.dep[i] - L.dep[prev] > maxBreak) ? 'M' + X + ' ' + Y : 'L' + X + ' ' + Y;
+      prev = i;
+    }
+    return d;
+  }
+  let defs = '', body = '';
+  tracks.forEach(t => { defs += '<clipPath id="clip_' + t.id + '"><rect x="' + t.x + '" y="' + T + '" width="' + t.w + '" height="' + H + '"/></clipPath>'; });
+  const dstep = niceStep(span, Math.max(4, Math.floor(H / 44)));
+  const ticks = []; for (let d = Math.ceil(v0 / dstep) * dstep; d <= v1 + 1e-9; d += dstep) ticks.push(+d.toFixed(6));
+
+  // рамки, названия, сетка
+  tracks.forEach(t => {
+    body += '<text x="' + (t.x + t.w / 2) + '" y="15" text-anchor="middle" font-size="12" font-weight="600">' + esc(t.t) + '</text>';
+    if (t.id === 'depth') return;
+    const c = cfg[t.id];
+    let lo = '', hi = '';
+    if (c){ lo = c.lg ? '0.2' : c.f(c.lo); hi = c.f(c.hi); }
+    if (t.id === 'core'){ lo = '0'; hi = '0.30'; }
+    if (lo !== '') body += '<text x="' + (t.x + 3) + '" y="' + (T - 6) + '" font-size="11" fill="var(--muted)" style="fill:var(--muted)">' + lo + '</text><text x="' + (t.x + t.w - 3) + '" y="' + (T - 6) + '" font-size="11" text-anchor="end" style="fill:var(--muted)">' + hi + '</text>';
+    body += '<rect x="' + t.x + '" y="' + T + '" width="' + t.w + '" height="' + H + '" fill="none" stroke="var(--axis)"/>';
+    if (c && c.lg){ [1, 10, 100, 1000].forEach(v => { const gx = xOf(c, v, t); body += '<line x1="' + gx + '" x2="' + gx + '" y1="' + T + '" y2="' + (T + H) + '" stroke="var(--grid)"/>'; }); }
+    else for (let q = 1; q < 4; q++){ const gx = t.x + t.w * q / 4; body += '<line x1="' + gx + '" x2="' + gx + '" y1="' + T + '" y2="' + (T + H) + '" stroke="var(--grid)"/>'; }
+  });
+  // горизонтальные линии глубины и шкала
+  const dt = tr('depth');
+  body += '<rect x="' + dt.x + '" y="' + T + '" width="' + dt.w + '" height="' + H + '" fill="var(--surface2)" stroke="var(--axis)"/>';
+  ticks.forEach(d => {
+    const yy = y(d).toFixed(1);
+    body += '<line x1="' + dt.x + '" x2="' + total + '" y1="' + yy + '" y2="' + yy + '" stroke="var(--grid)"/>';
+    body += '<text x="' + (dt.x + dt.w - 5) + '" y="' + (+yy + 4) + '" text-anchor="end" font-size="11">' + tickLabel(d, dstep) + '</text>';
+  });
+  // заливка коллекторов
+  const ivs = R.intervals.filter(o => o.base > v0 && o.top < v1);
+  const clipY = o => { const a = Math.max(y(o.top), T), b = Math.min(y(o.base), T + H); return [a, Math.max(b - a, 1.5)]; };
+  ['gr', 'vsh', 'phi', 'nphi', 'rt'].forEach(id => {
+    const t = tr(id); if (!t) return;
+    ivs.forEach(o => { const [a, h] = clipY(o); body += '<rect x="' + t.x + '" y="' + a + '" width="' + t.w + '" height="' + h + '" fill="var(--resfill)"/>'; });
+  });
+  // кривые
+  ['gr', 'vsh', 'phi', 'nphi', 'rt'].forEach(id => {
+    const t = tr(id); if (!t) return;
+    const c = cfg[id], d = pathOf(c.arr, c, t);
+    if (d) body += '<path d="' + d + '" fill="none" stroke="' + c.col + '" stroke-width="1.2" clip-path="url(#clip_' + id + ')"' + (id === 'nphi' ? ' stroke-dasharray="4 2"' : '') + '/>';
+  });
+  // линии отсечек
+  const tv = tr('vsh'), tp = tr('phi');
+  const xv = tv.x + state.vcut / 1 * tv.w, xp = tp.x + state.pcut / 0.30 * tp.w;
+  body += '<line x1="' + xv + '" x2="' + xv + '" y1="' + T + '" y2="' + (T + H) + '" stroke="var(--err)" stroke-width="1.6" stroke-dasharray="5 3"/>';
+  body += '<text x="' + Math.min(xv + 3, tv.x + tv.w - 60) + '" y="' + (T + 13) + '" font-size="11" style="fill:var(--err)">отсечка ' + state.vcut.toFixed(2) + '</text>';
+  body += '<line x1="' + xp + '" x2="' + xp + '" y1="' + T + '" y2="' + (T + H) + '" stroke="var(--err)" stroke-width="1.6" stroke-dasharray="5 3"/>';
+  body += '<text x="' + Math.min(xp + 3, tp.x + tp.w - 60) + '" y="' + (T + 13) + '" font-size="11" style="fill:var(--err)">отсечка ' + state.pcut.toFixed(3) + '</text>';
+  // керн
+  const tc = tr('core');
+  if (!state.cores.length) body += '<text x="' + (tc.x + tc.w / 2) + '" y="' + (T + H / 2) + '" text-anchor="middle" font-size="12" style="fill:var(--muted)">Керн не загружен</text>';
+  state.cores.forEach(c => {
+    if (c.base <= v0 || c.top >= v1) return;
+    const a = Math.max(y(c.top), T), b = Math.min(y(c.base), T + H), h = Math.max(b - a, 2);
+    const w = tc.w * clamp(c.phi / 0.30, 0, 1), badc = c.phi > 1 || c.phi < 0;
+    body += '<rect x="' + tc.x + '" y="' + a + '" width="' + Math.max(w, 2) + '" height="' + h + '" fill="var(--core)" fill-opacity=".75" stroke="' + (badc ? 'var(--err)' : 'var(--core)') + '" stroke-width="' + (badc ? 2 : 1) + '"/>';
+  });
+  // колонка «КОЛЛЕКТОР»
+  const tre = tr('res');
+  ivs.forEach(o => {
+    const [a, h] = clipY(o);
+    body += '<rect x="' + tre.x + '" y="' + a + '" width="' + tre.w + '" height="' + h + '" fill="var(--resstrong)"/>';
+    if (h >= 26) body += '<text x="' + (tre.x + tre.w / 2) + '" y="' + (a + h / 2 + 4) + '" text-anchor="middle" font-size="12" font-weight="600" style="fill:#fff">КОЛЛ</text>';
+  });
+  body += '<line id="xh" x1="0" x2="' + total + '" y1="0" y2="0" stroke="var(--ink)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden" pointer-events="none"/>';
+  body += '<rect id="hit" x="0" y="' + T + '" width="' + total + '" height="' + H + '" fill="transparent"/>';
+  host.innerHTML = '<svg id="plotSvg" width="' + total + '" height="' + Ht + '" viewBox="0 0 ' + total + ' ' + Ht + '" role="img" aria-label="Планшет ГИС: GR, Vsh, PHI, керн и коллекторы"><defs>' + defs + '</defs>' + body + '</svg>';
+  state.geom = { T, H, v0, span, core: tc, total };
+  attachPlotEvents();
+  updateZoomPos();
+}
+
+function nearestIdx(L, d){
+  let i = lowerBound(L.dep, d);
+  if (i >= L.n) i = L.n - 1;
+  if (i > 0 && Math.abs(L.dep[i - 1] - d) < Math.abs(L.dep[i] - d)) i--;
+  return i;
+}
+function showReadout(py, px){
+  const g = state.geom, L = state.log, R = state.res; if (!g || !L || !R) return;
+  const d = g.v0 + (py - g.T) / g.H * g.span;
+  const i = nearestIdx(L, d);
+  const parts = ['<b>Глубина ' + fmt(d, 2) + ' м</b>'];
+  if (Math.abs(L.dep[i] - d) <= 1.5 * L.step + 1e-9){
+    parts.push('GR ' + fmt(L.gr[i], 1), 'RHOB ' + fmt(L.rhob[i], 3), 'Vsh ' + fmt(R.vsh[i], 2), 'PHI ' + fmt(R.phi[i], 3));
+    if (L.hasNphi) parts.push('NPHI ' + fmt(L.nphi[i], 3));
+    if (L.hasRt) parts.push('RT ' + fmt(L.rt[i], 2));
+    parts.push(R.flag[i] ? '<span style="color:var(--ok);font-weight:600">коллектор</span>' : 'не коллектор');
+  } else parts.push('нет данных');
+  const html = parts.join(' · ');
+  let coreHtml = '';
+  if (px >= g.core.x && px <= g.core.x + g.core.w){
+    const c = state.cores.find(c => d >= c.top && d <= c.base);
+    if (c){
+      const bits = ['<b>Керн:</b> TOP ' + c.top + ' м', 'BASE ' + c.base + ' м', 'CORE_PHI ' + c.phi];
+      if (c.perm !== null) bits.push('PERM ' + esc(c.perm));
+      if (c.lith !== null) bits.push('LITHOLOGY ' + esc(c.lith));
+      if (c.rec !== null) bits.push('RECOVERY ' + esc(c.rec));
+      coreHtml = '<br>' + bits.join(' · ');
+    }
+  }
+  $('readout').innerHTML = html + coreHtml;
+  const xh = $('xh'); if (xh){ xh.setAttribute('y1', py); xh.setAttribute('y2', py); xh.setAttribute('visibility', 'visible'); }
+}
+function attachPlotEvents(){
+  const svg = $('plotSvg'); if (!svg) return;
+  const on = e => {
+    const r = svg.getBoundingClientRect(), g = state.geom;
+    const py = e.clientY - r.top, px = e.clientX - r.left;
+    if (py < g.T || py > g.T + g.H) return;
+    showReadout(py, px);
+  };
+  svg.addEventListener('pointermove', on);
+  svg.addEventListener('pointerdown', on);
+  svg.addEventListener('pointerleave', () => { const xh = $('xh'); if (xh) xh.setAttribute('visibility', 'hidden'); });
+}
+function setView(a, b){
+  const L = state.log; if (!L) return;
+  const full = [L.dmin, Math.max(L.dmax, L.dmin + L.step)];
+  let span = Math.max(b - a, L.step * 5);
+  span = Math.min(span, full[1] - full[0]);
+  a = clamp(a, full[0], full[1] - span);
+  state.view = [a, a + span];
+  renderPlot();
+}
+function updateZoomPos(){
+  const L = state.log; if (!L) return;
+  const full = L.dmax - L.dmin, span = state.view[1] - state.view[0], sl = $('zPos');
+  const room = full - span;
+  sl.disabled = room < 1e-6;
+  sl.value = room < 1e-6 ? 0 : Math.round((state.view[0] - L.dmin) / room * 1000);
+}
+
+/* ============================== ПОКАЗАТЕЛИ И ТАБЛИЦА ============================== */
+function renderMetrics(){
+  const R = state.res, host = $('metrics');
+  const m = (v, l) => '<div class="m"><b>' + v + '</b><span>' + l + '</span></div>';
+  if (!R){ host.innerHTML = m('—', 'Интервалов') + m('—', 'Эфф. толщина, м') + m('—', 'Средняя PHI') + m(state.cores.length, 'Керновых интервалов'); return; }
+  host.innerHTML = m(R.intervals.length, 'Выделено интервалов') + m(fmt(R.totalThick, 1), 'Суммарная эфф. толщина, м') +
+    m(R.intervals.length ? fmt(R.avgPhi, 3) : '—', 'Средняя PHI коллекторов') + m(state.cores.length, 'Загружено керновых интервалов');
+}
+function renderTable(){
+  const R = state.res, host = $('tableHost');
+  if (!R){ host.innerHTML = '<div class="msg info">Таблица появится после расчёта.</div>'; return; }
+  if (!R.intervals.length){ host.innerHTML = '<div class="msg info">При текущих отсечках коллекторы не выделены. Увеличьте максимальную отсечку Vsh или уменьшите минимальную отсечку PHI.</div>'; return; }
+  host.innerHTML = '<table><thead><tr><th>№</th><th>Кровля, м</th><th>Подошва, м</th><th>Эфф. толщ., м</th><th>Vsh ср.</th><th>PHI ср.</th><th>Керн</th></tr></thead><tbody>' +
+    R.intervals.map((o, i) => '<tr data-i="' + i + '"><td>' + (i + 1) + '</td><td>' + fmt(o.top, 1) + '</td><td>' + fmt(o.base, 1) + '</td><td>' + fmt(o.thick, 1) + '</td><td>' + fmt(o.vsh, 2) + '</td><td>' + fmt(o.phi, 3) + '</td><td>' + (o.core === null ? '—' : (o.core ? 'да' : 'нет')) + '</td></tr>').join('') +
+    '</tbody></table>';
+  host.querySelectorAll('tbody tr').forEach(tr => tr.addEventListener('click', () => {
+    const o = R.intervals[+tr.dataset.i], pad = Math.max((o.base - o.top) * 0.5, state.log.step * 10);
+    setView(o.top - pad, o.base + pad);
+  }));
+}
+function renderAll(){ renderMetrics(); renderTable(); renderPlot(); }
+
+/* ============================== САМОТЕСТ ============================== */
+function runSelfTest(){
+  const out = [], ok = (pass, text) => out.push({ pass: !!pass, text });
+  const t0 = makeSynthetic(42);
+  const nulls = j => t0.rows.filter(r => r[j] === NULLV).length;
+  ok(t0.rows.length === 2001 && [1, 2, 3, 4].every(j => nulls(j) === 20), 'Встроенная UZ-1: 2001 строка, по 20 значений NULL в каждой кривой (2 интервала по 1 м)');
+  const same = (t, label) => {
+    if (t.rows.length !== t0.rows.length) return label + ': строк ' + t.rows.length + ' вместо ' + t0.rows.length;
+    for (let i = 0; i < t0.rows.length; i++) for (let j = 0; j < 5; j++){
+      const a = toNum(t.rows[i][j]); if (!(Math.abs(a - t0.rows[i][j]) <= 1e-6)) return label + ': расхождение в строке ' + (i + 1) + ', колонка ' + (j + 1);
+    }
+    return '';
+  };
+  const logOf = (table, nv) => buildLog(table, detectColumns(table.cols, ALIASES), nv);
+  const ref = logOf(t0, NULLV);
+  const sameLog = (r, label) => r.log && r.log.n === ref.log.n && r.log.valid.reduce((s, v) => s + v, 0) === ref.log.valid.reduce((s, v) => s + v, 0) && Math.abs(r.log.dmin - ref.log.dmin) < 1e-9 && Math.abs(r.log.dmax - ref.log.dmax) < 1e-9;
+  // CSV
+  try { const r = parseCsvText(synthCsv(t0)); const e = r.error || same(r.table, 'CSV'); const l = logOf(r.table, r.nullVal); ok(!e && sameLog(l), 'Тестовый CSV читается и совпадает со встроенным набором' + (e ? ' — ' + e : '')); } catch (e){ ok(false, 'CSV: исключение ' + e.message); }
+  // LAS
+  try { const r = parseLas(synthLas(t0)); const e = r.error || same(r.table, 'LAS'); const l = r.error ? {} : logOf(r.table, r.nullVal); ok(!e && sameLog(l) && r.nullVal === NULLV, 'Тестовый LAS 2.0 (WRAP.NO) читается и совпадает со встроенным набором' + (e ? ' — ' + e : '')); } catch (e){ ok(false, 'LAS: исключение ' + e.message); }
+  try { const r = parseLas(synthLas(t0).replace('WRAP.                   NO', 'WRAP.                  YES')); ok(!!r.error, 'LAS с WRAP = YES отклоняется понятной ошибкой'); } catch (e){ ok(false, 'LAS WRAP: ' + e.message); }
+  // XLSX
+  if (window.XLSX){
+    try {
+      const buf = XLSX.write(synthXlsxWb(t0), { bookType: 'xlsx', type: 'array' });
+      const wb = XLSX.read(buf, { type: 'array' });
+      const src = { kind: 'xlsx', wb, sheetNames: wb.SheetNames, sheet: 0 };
+      const r = tableFromSrc(src); const e = r.error || same(r.table, 'XLSX'); const l = r.error ? {} : logOf(r.table, r.nullVal);
+      ok(!e && sameLog(l) && wb.SheetNames.length === 2, 'Тестовый Excel (2 листа) читается и совпадает со встроенным набором' + (e ? ' — ' + e : ''));
+      const buf2 = XLSX.write(coreXlsxWb(), { bookType: 'xlsx', type: 'array' });
+      const wb2 = XLSX.read(buf2, { type: 'array' });
+      const rc = tableFromSrc({ kind: 'xlsx', wb: wb2, sheetNames: wb2.SheetNames, sheet: 0 });
+      const cc = rc.error ? { cores: [] } : buildCore(rc.table, detectColumns(rc.table.cols, CORE_ALIASES), ref.log);
+      ok(cc.cores.length === 6 && cc.warns.every(w => w.level === 'ok'), 'Тестовый керн Excel: 6 интервалов без замечаний');
+    } catch (e){ ok(false, 'XLSX: исключение ' + e.message); }
+  } else { ok(false, 'Excel: библиотека SheetJS не загружена (нет доступа к cdnjs.cloudflare.com)'); }
+  // Керн CSV
+  try {
+    const rc = parseCsvText(coreCsv(CORE_TEST)); const cc = buildCore(rc.table, detectColumns(rc.table.cols, CORE_ALIASES), ref.log);
+    ok(cc.cores.length === 6 && cc.cores[0].top === 2051 && Math.abs(cc.cores[2].phi - 0.231) < 1e-9 && cc.cores[3].lith === 'Песчаник', 'Тестовый керн CSV: 6 интервалов, значения совпадают');
+  } catch (e){ ok(false, 'Керн CSV: ' + e.message); }
+  // Контроль качества ГИС
+  try {
+    const r = parseCsvText(badLogCsv()); const l = logOf(r.table, r.nullVal);
+    const codes = l.warns.map(w => w.code);
+    const need = ['dup', 'order', 'null', 'empty', 'nonnum', 'gap'];
+    const miss = need.filter(c => !codes.includes(c));
+    ok(!miss.length, 'Файл ГИС с ошибками: найдены дубли, нарушение порядка, NULL, пустые, нечисловые значения и разрыв сетки' + (miss.length ? ' — не найдено: ' + miss.join(', ') : ''));
+    const noCols = buildLog(t0, { DEPTH: 0, GR: -1, RHOB: 2, NPHI: -1, RT: -1 }, NULLV);
+    ok(!noCols.log && noCols.warns.some(w => w.code === 'missing'), 'Без колонки GR расчёт не начинается, показано предупреждение');
+  } catch (e){ ok(false, 'QC ГИС: ' + e.message); }
+  try {
+    const r = parseCsvText(badCoreCsv()); const cc = buildCore(r.table, detectColumns(r.table.cols, CORE_ALIASES), ref.log);
+    const codes = cc.warns.map(w => w.code), need = ['overlap', 'order', 'pct', 'neg', 'outside', 'nonnum'];
+    const miss = need.filter(c => !codes.includes(c));
+    const pctW = cc.warns.find(w => w.code === 'pct');
+    ok(!miss.length && pctW && pctW.text.includes('Проверьте единицы') && cc.cores.some(c => c.phi === 21.5), 'Файл керна с ошибками: перекрытие, BASE ≤ TOP, проценты (без пересчёта), отрицательное, вне диапазона, нечисловое' + (miss.length ? ' — не найдено: ' + miss.join(', ') : ''));
+  } catch (e){ ok(false, 'QC керна: ' + e.message); }
+  // Расчёт и контрольная точка
+  try {
+    const L = ref.log, P = { grClean: 26.2, grShale: 86.9, rhoMa: 2.65, rhoFl: 1.0, method: 'lin' };
+    const vsh = new Float64Array(L.n).fill(NaN), phi = new Float64Array(L.n).fill(NaN);
+    for (let i = 0; i < L.n; i++) if (L.valid[i]){ vsh[i] = calcVsh(L.gr[i], P); phi[i] = calcPhi(L.rhob[i], P); }
+    const r = findReservoirs(L, vsh, phi, { v: 0.35, p: 0.10, min: 0 }, L.dmin, L.dmax);
+    const tot = r.intervals.reduce((s, o) => s + o.thick, 0), big = r.intervals.filter(o => o.thick >= 3);
+    const bounds = [[2050, 2055], [2100, 2105], [2106, 2110], [2150, 2165]];
+    const fit = big.length === 4 && big.every((o, i) => Math.abs(o.top - bounds[i][0]) < 0.8 && Math.abs(o.base - bounds[i][1]) < 0.8);
+    ok(tot > 25.5 && tot < 28.5 && fit, 'Расчёт на встроенной UZ-1 (Vsh ≤ 0,35, PHI ≥ 0,10): суммарная толщина ' + tot.toFixed(1) + ' м (ожидается 26–28), крупных интервалов ' + big.length + ' (ожидается 4: пласт 2 разделён пропуском 2105–2106 м)');
+    const m = findReservoirs(L, vsh, phi, { v: 0.35, p: 0.10, min: 1 }, L.dmin, L.dmax);
+    ok(m.intervals.length === big.length || m.intervals.every(o => o.thick >= 1), 'Минимальная мощность отбрасывает короткие фрагменты (после фильтра: ' + m.intervals.length + ')');
+    // Дубли не удваивают толщину
+    const dupT = { cols: t0.cols, units: t0.units, rows: t0.rows.concat(t0.rows.slice(480, 560)) };
+    const lD = logOf(dupT, NULLV).log; const vD = new Float64Array(lD.n).fill(NaN), pD = new Float64Array(lD.n).fill(NaN);
+    for (let i = 0; i < lD.n; i++) if (lD.valid[i]){ vD[i] = calcVsh(lD.gr[i], P); pD[i] = calcPhi(lD.rhob[i], P); }
+    const rD = findReservoirs(lD, vD, pD, { v: 0.35, p: 0.10, min: 0 }, lD.dmin, lD.dmax);
+    ok(Math.abs(rD.intervals.reduce((s, o) => s + o.thick, 0) - tot) < 1e-6, 'Повторяющиеся глубины не приводят к двойному расчёту эффективной толщины');
+    // Экспорт
+    const csv = exportCsv(L, Object.assign(r, { vsh, phi }), cores_for_test(L), L.dmin, L.dmax, ';', '.');
+    const back = parseCsvText(csv);
+    const flagSum = back.table.rows.reduce((s, row) => s + (+row[5]), 0);
+    ok(!back.error && back.table.rows.length === L.n && back.table.cols.join() === 'DEPTH,GR,RHOB,VSH,PHI,COLLECTOR,CORE_PHI,CORE_LITHOLOGY' && flagSum === r.flag.reduce((s, v) => s + v, 0) && back.table.rows.some(row => !isBlank(row[6]) && row[7] === 'Песчаник'),
+      'Экспорт CSV читается обратно: ' + back.table.rows.length + ' строк, COLLECTOR = ' + flagSum + ' точек, CORE_PHI и литология заполнены');
+    const csvD = exportCsv(L, Object.assign(r, { vsh, phi }), [], L.dmin, L.dmax, ';', ',');
+    const backD = parseCsvText(csvD);
+    ok(!backD.error && backD.table.rows.length === L.n && Math.abs(toNum(backD.table.rows[10][0]) - L.dep[10]) < 1e-9 && Math.abs(toNum(backD.table.rows[500][3]) - vsh[500]) < 1e-4,
+      'Экспорт с разделителем «;» и десятичной запятой читается обратно без потерь');
+  } catch (e){ ok(false, 'Расчёт/экспорт: ' + e.message); }
+  const ul = $('selfOut');
+  ul.innerHTML = out.map(o => '<li><span class="' + (o.pass ? 'ok' : 'no') + '">' + (o.pass ? '✓' : '✕') + '</span><span>' + esc(o.text) + '</span></li>').join('') +
+    '<li><b>Итог: ' + (out.every(o => o.pass) ? 'все проверки пройдены' : 'есть ✕') + ' (' + out.filter(o => o.pass).length + ' из ' + out.length + ')</b></li>';
+  return out;
+}
+function cores_for_test(L){
+  return CORE_TEST.map(r => ({ top: r[0], base: r[1], phi: r[2], perm: r[3], lith: r[4], rec: r[5] }));
+}
+
+/* ============================== ПРИВЯЗКА СОБЫТИЙ ============================== */
+function bind(){
+  $('btnGis').onclick = () => $('fGis').click();
+  $('btnCore').onclick = () => $('fCore').click();
+  $('fGis').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; await onFile('gis', f); };
+  $('fCore').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; await onFile('core', f); };
+  $('btnBuiltin').onclick = loadBuiltin;
+  $('btnCoreClear').onclick = () => { state.core = null; $('coreMsg').innerHTML = ''; renderSheet('core'); renderMapping('core'); rebuildCore(); };
+  $('gisSheet').onchange = e => { state.gis.src.sheet = +e.target.value; setGisSource(state.gis.src); };
+  $('coreSheet').onchange = e => { state.core.src.sheet = +e.target.value; setCoreSource(state.core.src); };
+
+  ['pGrClean', 'pGrShale', 'pRhoMa', 'pRhoFl'].forEach(id => $(id).addEventListener('input', computeAll));
+  $('pMethod').addEventListener('change', computeAll);
+  $('iMin').addEventListener('input', computeAll);
+  const intervalChange = () => {
+    computeAll();
+    if (!state.intervalErr.length && state.log) setView(state.iTop, state.iBase);
+  };
+  $('iTop').addEventListener('input', computeAll); $('iBase').addEventListener('input', computeAll);
+  $('iTop').addEventListener('change', intervalChange); $('iBase').addEventListener('change', intervalChange);
+  $('sV').addEventListener('input', e => { state.vcut = +e.target.value; $('sVv').textContent = state.vcut.toFixed(2); computeAll(); });
+  $('sP').addEventListener('input', e => { state.pcut = +e.target.value; $('sPv').textContent = state.pcut.toFixed(3); computeAll(); });
+
+  $('zIn').onclick = () => { const [a, b] = state.view, c = (a + b) / 2, s = (b - a) / 4; setView(c - s, c + s); };
+  $('zOut').onclick = () => { const [a, b] = state.view, c = (a + b) / 2, s = b - a; setView(c - s, c + s); };
+  $('zAll').onclick = () => { const L = state.log; if (L) setView(L.dmin, L.dmax + L.step); };
+  $('zPos').addEventListener('input', e => {
+    const L = state.log; if (!L) return;
+    const span = state.view[1] - state.view[0], room = (L.dmax - L.dmin) - span;
+    if (room <= 0) return;
+    const a = L.dmin + room * (+e.target.value) / 1000;
+    state.view = [a, a + span]; renderPlot();
+  });
+  $('plotHost').addEventListener('wheel', e => {
+    if (!(e.ctrlKey || e.metaKey) || !state.log || !state.geom) return;
+    e.preventDefault();
+    const r = $('plotSvg').getBoundingClientRect(), g = state.geom;
+    const py = clamp(e.clientY - r.top, g.T, g.T + g.H), d = g.v0 + (py - g.T) / g.H * g.span;
+    const f = e.deltaY < 0 ? 0.8 : 1.25, [a, b] = state.view;
+    setView(d - (d - a) * f, d + (b - d) * f);
+  }, { passive: false });
+  let rt = null;
+  new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { if (state.res) renderPlot(); }, 120); }).observe($('plotHost'));
+
+  // Тестовые файлы
+  const T = () => state.builtin || makeSynthetic(42);
+  $('tCsv').onclick = () => { const t = synthCsv(T()); download('UZ-1_test.csv', t, 'text/csv;charset=utf-8', t); };
+  $('tLas').onclick = () => { const t = synthLas(T()); download('UZ-1_test.las', t, 'text/plain;charset=utf-8', t); };
+  $('tXlsx').onclick = () => {
+    if (!window.XLSX){ $('gisMsg').innerHTML = msgHtml('err', 'Библиотека Excel не загрузилась (нет доступа к cdnjs.cloudflare.com). Скачайте CSV или LAS.'); return; }
+    const t = T(), wb = synthXlsxWb(t);
+    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    download('UZ-1_test.xlsx', new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), '', tsvOf([t.cols].concat(t.rows.map(r => r.map(fmtCell)))));
+  };
+  $('tCoreCsv').onclick = () => { const t = coreCsv(CORE_TEST); download('UZ-1_core_test.csv', t, 'text/csv;charset=utf-8', t); };
+  $('tCoreXlsx').onclick = () => {
+    if (!window.XLSX){ $('coreMsg').innerHTML = msgHtml('err', 'Библиотека Excel не загрузилась (нет доступа к cdnjs.cloudflare.com). Скачайте CSV.'); return; }
+    const buf = XLSX.write(coreXlsxWb(), { bookType: 'xlsx', type: 'array' });
+    download('UZ-1_core_test.xlsx', new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), '', tsvOf([CORE_COLS].concat(CORE_TEST)));
+  };
+  $('tBadLog').onclick = () => { const t = badLogCsv(); download('UZ-1_errors.csv', t, 'text/csv;charset=utf-8', t); };
+  $('tBadCore').onclick = () => { const t = badCoreCsv(); download('UZ-1_core_errors.csv', t, 'text/csv;charset=utf-8', t); };
+
+  $('btnExport').onclick = () => {
+    if (!state.res || !state.log){ $('intervalMsg').innerHTML = msgHtml('err', 'Нечего экспортировать: нет рассчитанных данных.'); return; }
+    const delim = $('xDelim').value, dec = $('xDec').value;
+    const text = exportCsv(state.log, state.res, state.cores, state.iTop, state.iBase, delim, dec);
+    download('PetroQuick_result.csv', '\uFEFF' + text, 'text/csv;charset=utf-8', text);
+  };
+  $('dlShow').onclick = showDialog;
+  $('dlClose').onclick = () => { $('dlBar').hidden = true; };
+  $('dlgClose').onclick = () => { $('dlg').hidden = true; $('dlgCopy').textContent = 'Копировать'; };
+  $('dlgCopy').onclick = copyDialog;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('dlg').hidden) $('dlgClose').click(); });
+  $('btnSelf').onclick = runSelfTest;
+}
+
+bind();
+loadBuiltin();
+</script>
+</body>
+</html>
